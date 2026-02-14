@@ -5,8 +5,11 @@ import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import testCreditRoutes from "./routes/testCredits.js";
+import brandingRoutes from "./routes/brandingRoutes.js"; // ✅ EKLENDİ
+
+// Stripe webhook SADECE key varsa yüklenecek
 import stripeWebhook from "./routes/stripeWebhook.js";
-import testCreditRoutes from "./routes/testCredits.js"; // 👈 EKLENDİ
 
 dotenv.config();
 
@@ -14,27 +17,57 @@ const app = express();
 
 /* ===============================
    STRIPE WEBHOOK (RAW BODY)
+   ⚠️ SADECE STRIPE VARSA
 ================================ */
-app.use("/stripe", stripeWebhook);
+if (process.env.STRIPE_WEBHOOK_SECRET) {
+  app.use("/stripe", stripeWebhook);
+  console.log("💳 Stripe webhook enabled");
+} else {
+  console.log("💤 Stripe webhook disabled (no env keys)");
+}
 
 /* ===============================
    MIDDLEWARE
 ================================ */
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://getuniqbucet.s3.eu-north-1.amazonaws.com",
+      "https://getuniqbucet.s3.eu-north-1.amazonaws.com",
+      "http://getuniq.ai",
+      "https://getuniq.ai",
+    ],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+
+/* ===============================
+   HEALTH CHECK
+================================ */
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    env: process.env.NODE_ENV,
+    stripe: !!process.env.STRIPE_SECRET_KEY,
+  });
+});
 
 /* ===============================
    ROUTES
 ================================ */
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
-app.use("/api/test", testCreditRoutes); // 👈 EKLENDİ
-
-const PORT = process.env.PORT || 3001;
+app.use("/api/test", testCreditRoutes);
+app.use("/api/branding", brandingRoutes); // ✅ EKLENDİ
 
 /* ===============================
    START SERVER
 ================================ */
+const PORT = process.env.PORT || 3001;
+
 const startServer = async () => {
   try {
     await connectDB();

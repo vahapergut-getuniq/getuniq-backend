@@ -25,11 +25,9 @@ const PIPELINE_STEPS = {
     ],
   },
 
-  /* ================= WEB ================= */
   web: {
     onepage: ["brief", "design", "content", "build", "online"],
     landing: ["brief", "design", "content", "revisions", "online"],
-
     weboffice: [
       "home",
       "brief",
@@ -48,14 +46,12 @@ const PIPELINE_STEPS = {
     ],
   },
 
-  /* ================= MARKETING ================= */
   marketing: {
     dna: ["brief", "research", "contentplan", "publish", "report", "optimize"],
     growth: ["brief", "audit", "strategy", "setup", "execution", "optimize"],
     full: ["brief", "audit", "dna", "strategy", "execution", "optimize"],
   },
 
-  /* ================= CONTENT ================= */
   content: {
     post: ["brief", "script", "design", "export"],
     reel: ["brief", "script", "shoot", "edit", "export"],
@@ -84,7 +80,7 @@ const STEP_CREDIT_MAP = {
 };
 
 /* ============================================================
-   ACTIVITY LOG HELPER
+   ACTIVITY LOG
 ============================================================ */
 const pushActivity = async (projectId, activity) => {
   await Project.findByIdAndUpdate(projectId, {
@@ -103,7 +99,6 @@ const pushActivity = async (projectId, activity) => {
 export const createProject = async (req, res) => {
   try {
     const { studio, pipeline } = req.body;
-
     if (!studio) return res.status(400).json({ message: "studio required" });
 
     const titles = {
@@ -133,7 +128,7 @@ export const createProject = async (req, res) => {
 
     return res.status(201).json({ project });
   } catch (err) {
-    console.error("❌ CREATE PROJECT ERROR:", err);
+    console.error("CREATE PROJECT ERROR:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -145,7 +140,7 @@ export const getProjects = async (req, res) => {
   try {
     const projects = await Project.find({ userId: req.user.id }).sort({ createdAt: -1 });
     return res.json({ projects });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: "Fetch error" });
   }
 };
@@ -161,7 +156,6 @@ export const getProjectById = async (req, res) => {
     });
 
     if (!project) return res.status(404).json({ message: "Project not found" });
-
     return res.json({ project });
   } catch {
     return res.status(500).json({ message: "Fetch error" });
@@ -169,7 +163,7 @@ export const getProjectById = async (req, res) => {
 };
 
 /* ============================================================
-   UPDATE STEP + CREDIT GUARD
+   UPDATE STEP + CREDIT GUARD (CORE)
 ============================================================ */
 export const updateProjectStep = async (req, res) => {
   try {
@@ -186,7 +180,7 @@ export const updateProjectStep = async (req, res) => {
     const safePipeline = pipeline || null;
     const safeStep = step || null;
 
-    /* CREDIT GUARD */
+    /* CREDIT GUARD (bilinçli tekrar düşer) */
     const creditCost = STEP_CREDIT_MAP?.[safeStudio]?.[safeStep];
     if (creditCost) {
       await useCredits({
@@ -197,13 +191,10 @@ export const updateProjectStep = async (req, res) => {
       });
     }
 
-    /* ================= PIPELINE INIT ================= */
+    /* PIPELINE INIT */
     project.pipelines = project.pipelines || {};
-
-    if (safePipeline) {
-      if (!project.pipelines[safePipeline]) {
-        project.pipelines[safePipeline] = { steps: [] };
-      }
+    if (safePipeline && !project.pipelines[safePipeline]) {
+      project.pipelines[safePipeline] = { steps: [] };
     }
 
     /* STEP TRACKING */
@@ -213,14 +204,14 @@ export const updateProjectStep = async (req, res) => {
       }
 
       if (safePipeline) {
-        const arr = project.pipelines[safePipeline].steps || [];
-        if (!arr.includes(safeStep)) arr.push(safeStep);
-        project.pipelines[safePipeline].steps = arr;
+        const stepsArr = project.pipelines[safePipeline].steps || [];
+        if (!stepsArr.includes(safeStep)) stepsArr.push(safeStep);
+        project.pipelines[safePipeline].steps = stepsArr;
       }
 
       await pushActivity(project._id, {
         type: "step",
-        message: `Completed: ${safePipeline}/${safeStep}`,
+        message: `${safeStudio}/${safePipeline}/${safeStep}`,
       });
     }
 
@@ -232,8 +223,11 @@ export const updateProjectStep = async (req, res) => {
       project.data = { ...project.data, ...data };
     }
 
-    /* PROGRESS CALC */
-    if (safePipeline && PIPELINE_STEPS[safeStudio]?.[safePipeline]) {
+    /* PROGRESS CALC (GUARDED) */
+    if (
+      safePipeline &&
+      PIPELINE_STEPS[safeStudio]?.[safePipeline]
+    ) {
       const total = PIPELINE_STEPS[safeStudio][safePipeline].length;
       const done = project.pipelines[safePipeline]?.steps?.length || 0;
       project.progress = Math.round((done / total) * 100);
@@ -242,6 +236,7 @@ export const updateProjectStep = async (req, res) => {
     await project.save();
     return res.json({ project });
   } catch (err) {
+    console.error("STEP UPDATE ERROR:", err);
     return res.status(500).json({ message: "Step update error", error: err.message });
   }
 };
@@ -263,7 +258,7 @@ export const renameProject = async (req, res) => {
 
     await pushActivity(project._id, {
       type: "rename",
-      message: `Renamed to "${title}"`,
+      message: `Renamed → ${title}`,
     });
 
     return res.json({ project });
@@ -281,7 +276,6 @@ export const deleteProject = async (req, res) => {
       _id: req.params.id,
       userId: req.user.id,
     });
-
     return res.json({ success: true });
   } catch {
     return res.status(500).json({ message: "Delete error" });
@@ -309,7 +303,7 @@ export const updateWebOfficeStatus = async (req, res) => {
     if (!project) return res.status(404).json({ message: "Project not found" });
 
     await pushActivity(project._id, {
-      type: "web_status", // ⭐ Doğru enum
+      type: "web_status",
       message: `WebOffice → ${status}`,
     });
 

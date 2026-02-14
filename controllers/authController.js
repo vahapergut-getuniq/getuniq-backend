@@ -25,7 +25,7 @@ export const signup = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      plan: "free",
+      plan: "beginner",
       credits: 20, // default welcome credits
     });
 
