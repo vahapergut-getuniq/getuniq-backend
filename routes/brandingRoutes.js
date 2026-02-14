@@ -2,11 +2,7 @@ import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { useCredits } from "../utils/useCredits.js";
 import { CREDIT_COSTS } from "../config/creditCosts.js";
-
-import { generateBrandText } from "../utils/ai/openai.js";
-import { generateBrandImage } from "../utils/ai/leonardo.js";
-import { buildBrandPrompt } from "../utils/ai/promptBuilder.js";
-
+import { buildBrandPrompt } from "../utils/promptBuilder.js";
 import Project from "../models/Project.js";
 
 const router = express.Router();
@@ -77,6 +73,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
   }
 
   try {
+    // 1️⃣ CREDIT DÜŞ
     const remainingCredits = await useCredits({
       userId: req.user.id,
       amount: CREDIT_COSTS.branding.generate,
@@ -84,24 +81,30 @@ router.post("/generate", authMiddleware, async (req, res) => {
       refId: projectId,
     });
 
+    // 2️⃣ PROMPT OLUŞTUR
     const prompt = buildBrandPrompt({
       industry: brief.industry,
       keywords: brief.keywords,
       style: brief.tone,
     });
 
-    const brandText = await generateBrandText(prompt);
+    // 3️⃣ MOCK AI RESULT (AI layer geçici olarak kapalı)
+    const brandText = {
+      name: "Sample Brand",
+      slogan: "Luxury Redefined",
+      description: `Premium brand concept for ${brief.industry}`
+    };
 
-    const images = await generateBrandImage(
-      `Luxury logo design. ${brief.keywords}. ${brief.tone}`
-    );
+    const images = [];
 
     const aiResult = {
+      prompt,
       text: brandText,
       images,
       generatedAt: new Date(),
     };
 
+    // 4️⃣ PROJECT’E YAZ
     const project = await Project.findByIdAndUpdate(
       projectId,
       {

@@ -1,10 +1,7 @@
-import { buildBrandPrompt } from "../utils/ai/promptBuilder.js";
-import { generateBrandText } from "../utils/ai/openai.js";
-import { generateBrandImage } from "../utils/ai/leonardo.js";
-
+import { buildBrandPrompt } from "../utils/promptBuilder.js";
 
 // ======================================================
-// GENERATE BRANDING AI
+// GENERATE BRANDING AI (TEMP MOCK)
 // ======================================================
 
 export const generateBrandingAI = async (req, res) => {
@@ -19,24 +16,26 @@ export const generateBrandingAI = async (req, res) => {
       });
     }
 
-    // 2️⃣ Prompt
+    // 2️⃣ Prompt (şimdilik sadece oluşturuyoruz)
     const prompt = buildBrandPrompt({
       industry,
       keywords,
       style: tone,
     });
 
-    // 3️⃣ Text AI (OpenAI)
-    const text = await generateBrandText(prompt);
+    // 3️⃣ MOCK RESPONSE (AI geçici olarak kapalı)
+    const text = {
+      name: "Sample Brand",
+      slogan: "Luxury Redefined",
+      description: `Brand concept for ${industry} industry`
+    };
 
-    // 4️⃣ Image AI (Leonardo)
-    const images = await generateBrandImage(
-      `Luxury logo design. ${keywords}. ${tone}`
-    );
+    const images = [];
 
     return res.json({
       success: true,
       data: {
+        prompt,
         text,
         images,
       },
@@ -51,7 +50,6 @@ export const generateBrandingAI = async (req, res) => {
     });
   }
 };
-
 
 // ======================================================
 // GET BRANDING SAMPLES

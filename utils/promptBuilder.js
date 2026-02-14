@@ -1,31 +1,25 @@
-export function buildBrandPrompt({ industry, keywords, style }) {
-  return `
-You are a senior brand strategist working for a premium digital agency.
+import OpenAI from "openai";
 
-Create a premium, modern, and globally usable brand concept.
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-Context:
-- Industry: ${industry}
-- Brand keywords: ${keywords}
-- Style: ${style}
+export const generateBrandText = async (prompt) => {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "You are a luxury brand strategist." },
+      { role: "user", content: prompt }
+    ],
+    temperature: 0.8,
+  });
 
-Rules:
-- Use clear, professional English
-- Do NOT include explanations or markdown
-- Return ONLY valid JSON
-- Brand names must be original, short, and globally pronounceable
+  const content = response.choices[0].message.content;
 
-Return JSON with the following structure:
-{
-  "brand_name_suggestions": [string, string, string],
-  "brand_story": string,
-  "logo_description": string,
-  "color_palette": [
-    { "name": string, "hex": string },
-    { "name": string, "hex": string },
-    { "name": string, "hex": string }
-  ],
-  "typography_suggestion": string
-}
-`;
-}
+  try {
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("JSON PARSE ERROR:", content);
+    throw new Error("INVALID_AI_JSON");
+  }
+};
